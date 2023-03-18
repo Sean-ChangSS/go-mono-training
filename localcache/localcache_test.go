@@ -2,6 +2,7 @@ package localcache
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -52,5 +53,19 @@ func TestSetValueWithDuplicateKey(t *testing.T) {
 	diff := cmp.Diff(value2, got)
 	if diff != "" {
 		t.Fatalf(diff)
+	}
+}
+
+func TestCleanUnusedCacheAfter30Seconds(t *testing.T) {
+	key := "key"
+	value := "value"
+	cache := New()
+	cache.Set(key, value)
+
+	time.Sleep(30 * time.Second)
+
+	_, ok := cache.Get(key)
+	if ok {
+		t.Fatalf("cache is not expired")
 	}
 }
