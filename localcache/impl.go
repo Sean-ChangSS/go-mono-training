@@ -39,10 +39,6 @@ func (c *cache) Get(key string) (interface{}, bool) {
 	}
 
 	if time.Now().After(item.expireation) {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-
-		delete(c.data, key)
 		return nil, false
 	}
 
