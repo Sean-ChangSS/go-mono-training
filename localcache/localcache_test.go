@@ -42,6 +42,26 @@ func TestSetArbitraryTypeAndGet(t *testing.T) {
 	}
 }
 
+func TestMultipleSetGetOperation(t *testing.T) {
+	key1 := "key1"
+	value1 := "value1"
+	key2 := "key2"
+	value2 := "value2"
+	cache := New()
+	cache.Set(key1, value1)
+	cache.Set(key2, value2)
+	got1, _ := cache.Get(key1)
+	diff1 := cmp.Diff(value1, got1)
+	if diff1 != "" {
+		t.Fatalf(diff1)
+	}
+	got2, _ := cache.Get(key2)
+	diff2 := cmp.Diff(value2, got2)
+	if diff2 != "" {
+		t.Fatalf(diff2)
+	}
+}
+
 func TestSetValueWithDuplicateKey(t *testing.T) {
 	key := "key"
 	value1 := "value1"
