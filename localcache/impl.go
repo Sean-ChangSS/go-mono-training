@@ -1,6 +1,7 @@
 package localcache
 
 import (
+	"runtime"
 	"sync"
 	"time"
 )
@@ -9,14 +10,23 @@ const (
 	cacheRetainTime = 30 * time.Second
 )
 
-type cache struct {
-	data map[string]cacheItem
-	mu   sync.RWMutex
+type cachePointer struct {
+	*cache
 }
 
 type cacheItem struct {
 	value       interface{}
 	expireation time.Time
+}
+
+type janitor struct {
+	stop chan bool
+}
+
+type cache struct {
+	data    map[string]cacheItem
+	mu      sync.RWMutex
+	janitor janitor
 }
 
 func (c *cache) Set(key string, value interface{}) {
@@ -46,7 +56,16 @@ func (c *cache) Get(key string) (interface{}, bool) {
 }
 
 func (c *cache) clean() {
+	j := janitor{
+		stop: make(chan bool),
+	}
+	c.janitor = j
+
 	for {
+		if <-j.stop {
+			break
+		}
+
 		time.Sleep(cacheRetainTime)
 
 		c.mu.Lock()
@@ -59,13 +78,19 @@ func (c *cache) clean() {
 	}
 }
 
+func stopClean(c *cachePointer) {
+	c.janitor.stop <- true
+}
+
 func newCache() *cache {
 	c := &cache{
 		data: make(map[string]cacheItem),
 	}
 
 	// Start a background goroutine to periodically clean the cache
+	C := &cachePointer{c}
 	go c.clean()
+	runtime.SetFinalizer(C, stopClean)
 
 	return c
 }
