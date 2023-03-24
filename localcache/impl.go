@@ -10,10 +10,6 @@ const (
 	cacheRetainTime = 30 * time.Second
 )
 
-type cachePointer struct {
-	*cache
-}
-
 type cacheItem struct {
 	value       interface{}
 	expireation time.Time
@@ -23,13 +19,17 @@ type janitor struct {
 	stop chan bool
 }
 
-type cache struct {
+type sharedCache struct {
 	data    map[string]cacheItem
 	mu      sync.RWMutex
 	janitor janitor
 }
 
-func (c *cache) Set(key string, value interface{}) {
+type cache struct {
+	*sharedCache
+}
+
+func (c *sharedCache) Set(key string, value interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -39,7 +39,7 @@ func (c *cache) Set(key string, value interface{}) {
 	}
 }
 
-func (c *cache) Get(key string) (interface{}, bool) {
+func (c *sharedCache) Get(key string) (interface{}, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -55,7 +55,7 @@ func (c *cache) Get(key string) (interface{}, bool) {
 	return item.value, true
 }
 
-func (c *cache) clean() {
+func (c *sharedCache) clean() {
 	j := janitor{
 		stop: make(chan bool),
 	}
@@ -78,19 +78,19 @@ func (c *cache) clean() {
 	}
 }
 
-func stopClean(c *cachePointer) {
+func stopClean(c *cache) {
 	c.janitor.stop <- true
 }
 
 func newCache() *cache {
-	c := &cache{
+	c := &sharedCache{
 		data: make(map[string]cacheItem),
 	}
 
 	// Start a background goroutine to periodically clean the cache
-	C := &cachePointer{c}
+	C := &cache{c}
 	go c.clean()
 	runtime.SetFinalizer(C, stopClean)
 
-	return c
+	return C
 }
