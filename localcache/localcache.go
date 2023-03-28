@@ -5,7 +5,7 @@ package localcache
 // The guaranteed lifetime of cache entry is 30s.
 type Cache interface {
 
-	// Get returns the value for the given key, and a boolean for ok.
+	// Get returns the value for the given key, and a boolean indicating key exists or not.
 	Get(key string) (interface{}, bool)
 
 	// Set sets the value for the given key.
