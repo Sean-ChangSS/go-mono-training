@@ -7,23 +7,19 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestSetArbitraryTypeAndGet(t *testing.T) {
+func TestSet(t *testing.T) {
 	tests := []struct {
-		name   string
-		key    string
-		value  interface{}
-		expect interface{}
+		name  string
+		key   string
+		value interface{}
 	}{
-		{"string", "key", "value", "value"},
-		{"int", "key", 123, 123},
-		{"float", "key", 1.23, 1.23},
-		{"bool", "key", true, true},
-		{"slice", "key", []string{"a", "b", "c"}, []string{"a", "b", "c"}},
-		{"map", "key", map[string]int{"a": 1, "b": 2, "c": 3}, map[string]int{"a": 1, "b": 2, "c": 3}},
+		{"string", "key", "value"},
+		{"int", "key", 123},
+		{"float", "key", 1.23},
+		{"bool", "key", true},
+		{"slice", "key", []string{"a", "b", "c"}},
+		{"map", "key", map[string]int{"a": 1, "b": 2, "c": 3}},
 		{"struct", "key", struct {
-			Name string
-			Age  int
-		}{"bob", 18}, struct {
 			Name string
 			Age  int
 		}{"bob", 18}},
@@ -31,10 +27,10 @@ func TestSetArbitraryTypeAndGet(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			cache := New()
+			cache := newCache()
 			cache.Set(tc.key, tc.value)
-			got, _ := cache.Get(tc.key)
-			diff := cmp.Diff(tc.expect, got)
+
+			diff := cmp.Diff(tc.value, cache.data[tc.key].value)
 			if diff != "" {
 				t.Fatalf(diff)
 			}
@@ -42,23 +38,42 @@ func TestSetArbitraryTypeAndGet(t *testing.T) {
 	}
 }
 
-func TestMultipleSetGetOperation(t *testing.T) {
-	key1 := "key1"
-	value1 := "value1"
-	key2 := "key2"
-	value2 := "value2"
-	cache := New()
-	cache.Set(key1, value1)
-	cache.Set(key2, value2)
-	got1, _ := cache.Get(key1)
-	diff1 := cmp.Diff(value1, got1)
-	if diff1 != "" {
-		t.Fatalf(diff1)
+func TestGet(t *testing.T) {
+	tests := []struct {
+		name  string
+		key   string
+		value interface{}
+	}{
+		{"string", "key", "value"},
+		{"int", "key", 123},
+		{"float", "key", 1.23},
+		{"bool", "key", true},
+		{"slice", "key", []string{"a", "b", "c"}},
+		{"map", "key", map[string]int{"a": 1, "b": 2, "c": 3}},
+		{"struct", "key", struct {
+			Name string
+			Age  int
+		}{"bob", 18}},
 	}
-	got2, _ := cache.Get(key2)
-	diff2 := cmp.Diff(value2, got2)
-	if diff2 != "" {
-		t.Fatalf(diff2)
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cache := newCache()
+			cache.data[tc.key] = cacheItem{
+				value:       tc.value,
+				expireation: time.Now().Add(cacheRetainTime),
+			}
+
+			got, ok := cache.Get(tc.key)
+			if !ok {
+				t.Fatalf("key not found")
+			}
+
+			diff := cmp.Diff(tc.value, got)
+			if diff != "" {
+				t.Fatalf(diff)
+			}
+		})
 	}
 }
 
